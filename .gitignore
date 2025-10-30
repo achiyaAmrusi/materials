@@ -30,7 +30,5 @@ dist/
 build/
 
 # IDE/project files
-.vscode/
-.idea/
 *.swp
 .DS_Store
