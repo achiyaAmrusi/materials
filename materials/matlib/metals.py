@@ -1,5 +1,5 @@
 from materials import Material
-from materials.isotopes import Cu, Al
+from materials.isotopes import Cu, Al, Pb
 
 copper = Material(
     name="copper",
@@ -17,4 +17,11 @@ aluminum = Material(
 },
     fraction_type="atomic",
     density=2.6989  # g/cm3
+)
+
+lead  = Material(
+    name='lead',
+    composition={Pb:1},
+    fraction_type='atomic',
+    density = 11.35
 )
