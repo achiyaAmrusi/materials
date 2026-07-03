@@ -5,3 +5,4 @@ from materials.matlib.concrete import sand, portland_concrete, magnetite, baryte
 from materials.matlib.metals import Al, Cu, lead
 from materials.matlib.thermoplasitic import polyethylene, polypropylene, polystyrene
 from materials.matlib.detectors import NaI
+from materials.matlib.glass import glass
