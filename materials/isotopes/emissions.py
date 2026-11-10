@@ -1,14 +1,14 @@
 """Decay emission lines of radionuclides: gamma and X-ray lines, beta endpoints, alpha lines.
 
-    from materials.isotopes import emissions
-    emissions.gamma_lines("Co60")          # DataFrame: energy [eV], intensity [per decay]
+    from materials.isotopes import Co60, emissions
+    Co60.gamma_lines()                     # DataFrame: energy [eV], intensity [per decay]
     emissions.photon_lines("Na22")         # gamma + xray + annihilation (511 keV)
     emissions.beta_endpoints("Cu64")       # beta- and beta+ branches: radiation, endpoint energy, intensity
     emissions.alpha_lines("Am241")
-    emissions.lines((11, 24, 1))           # every line of Na-24m1
+    emissions.lines((47, 110, 1))          # every line of ENDF's Ag-110m1 (250 d)
 
 Data: the ENDF/B-VIII.1 decay sublibrary, discrete spectra (MF8/MT457), bundled as
-library/decay_lines.csv.gz (made by scripts/make_decay_lines.py). Per decay:
+library/decay_lines.csv.gz (built by sources/endf_decay.ipynb). Per decay:
     gamma, xray      photon energy, photons per decay
     annihilation     511 keV, photons per decay (ENDF's 511 keV X-ray entries, ~2 x positrons)
     beta-            endpoint energy of each branch, branch intensity
@@ -16,20 +16,23 @@ library/decay_lines.csv.gz (made by scripts/make_decay_lines.py). Per decay:
     alpha            alpha energy, alphas per decay
 A nuclide with no row (stable, or no discrete data) gives an empty table.
 
-Nuclides: a symbol ("Co60", "Na24m1"), a (Z, A, m) tuple, or an object with Z and A (and m, or
-the materials package's ZAID). Isomers are numbered as ENDF numbers them (m = LISO). NUBASE,
-behind this package's Isotope objects, numbers some isomers differently (its "Na24m" is ENDF's
-Na24m1, but for ~100 nuclides the m differs), so for isomers prefer (Z, A, m) taken from ENDF.
+Nuclides, in two numberings of isomers:
+    NUBASE (this package)   a symbol ("Co60", "Ag110n") or a materials Isotope: looked up in the
+                            registry; an isomer is translated to its ENDF state through
+                            library/endf_states.csv (matched by excitation energy, else half-life)
+    ENDF                    a (Z, A, m) tuple or an object with Z, A and m (an isotopes ZAID), m = LISO
+The two differ for ~50 isomers: NUBASE's Ag110m is a 0.66 us level, its Ag110n is ENDF's (47, 110, 1).
+A NUBASE isomer without an ENDF state raises LookupError.
 """
-import re
 from functools import lru_cache
 import importlib.resources as pkg_resources
 
 import pandas as pd
 
+from materials.isotopes import registry
+
 RADIATIONS = ("gamma", "xray", "annihilation", "beta-", "beta+", "alpha")
 PHOTONS = ("gamma", "xray", "annihilation")
-_SYMBOL = re.compile(r"^([A-Z][a-z]?)(\d+)(?:m(\d*))?$")
 
 
 def lines(nuclide, radiation=None) -> pd.DataFrame:
@@ -68,34 +71,37 @@ def alpha_lines(nuclide) -> pd.DataFrame:
 
 
 def _key(nuclide) -> tuple[int, int, int]:
-    """(Z, A, m) of a symbol, a tuple or an object with Z and A."""
+    """(Z, A, m) in ENDF numbering of a NUBASE symbol or Isotope, a tuple or a ZAID."""
     if isinstance(nuclide, tuple):
         z, a, m = (tuple(nuclide) + (0,))[:3]
         return int(z), int(a), int(m)
     if isinstance(nuclide, str):
-        match = _SYMBOL.match(nuclide)
-        if match is None:
-            raise ValueError(f"not a nuclide symbol: {nuclide!r} (e.g. 'Co60', 'Na24m1')")
-        element, a, m = match.groups()
-        m = 0 if m is None else int(m or 1)
-        return _atomic_number(element), int(a), m
-    z, a = int(nuclide.Z), int(nuclide.A)
-    m = getattr(nuclide, "m", None)
-    if m is None:       # materials Isotope: ZAID is Z*1000+A, or (Z*1000+A)*10+m for isomers
-        zaid = int(getattr(nuclide, "ZAID", z * 1000 + a))
-        m = zaid % 10 if zaid >= 10000 * z + 10 * a else 0
-    return z, a, int(m)
+        try:
+            nuclide = registry.load_isotope(nuclide)
+        except AttributeError:
+            raise ValueError(f"{nuclide!r} is not a NUBASE symbol (e.g. 'Co60', 'Ag110n'); "
+                             "for ENDF numbering give (Z, A, m)") from None
+    if hasattr(nuclide, "m"):           # isotopes ZAID / Isotope: ENDF numbering
+        return int(nuclide.Z), int(nuclide.A), int(nuclide.m)
+    return _endf_state(nuclide.symbol, int(nuclide.Z), int(nuclide.A), int(nuclide.ZAID))
 
 
-@lru_cache(maxsize=None)
-def _atomic_number(element: str) -> int:
-    with pkg_resources.as_file(pkg_resources.files("materials.library") / "nubase2020.csv") as path:
-        nubase = pd.read_csv(path, usecols=["Z", "symbol"])
-    symbols = nubase.symbol.str.extract(r"^([A-Z][a-z]?)")[0]
-    found = nubase.Z[symbols == element]
-    if found.empty:
-        raise ValueError(f"unknown element {element!r}")
-    return int(found.iloc[0])
+def _endf_state(symbol: str, z: int, a: int, zaid: int) -> tuple[int, int, int]:
+    """The ENDF state of a NUBASE state (endf_states.csv); a ground state is m = 0."""
+    states = _states()
+    found = states[states.nubase == symbol]
+    if len(found):
+        row = found.iloc[0]
+        return int(row.Z), int(row.A), int(row.m)
+    if zaid == 1000 * z + a:
+        return z, a, 0
+    raise LookupError(f"NUBASE state {symbol} has no ENDF decay state (see library/endf_states.csv)")
+
+
+@lru_cache(maxsize=1)
+def _states() -> pd.DataFrame:
+    with pkg_resources.as_file(pkg_resources.files("materials.library") / "endf_states.csv") as path:
+        return pd.read_csv(path, keep_default_na=False, na_values={"excitation": [""], "half_life": [""]})
 
 
 @lru_cache(maxsize=1)

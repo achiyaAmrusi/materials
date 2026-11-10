@@ -4,6 +4,7 @@ class Isotope:
         self.A = A
         self.mass = mass              # Mass from Nubase
         self.ZAID = ZAID              # Nubase ID
+        self.excitation_level = excitation_level   # excitation energy [keV], 0 for ground states
         self.symbol = symbol              # e.g. "He4"
         self.abundance = abundance    # natural abundance in %
         self.decay = decay            # decay time

@@ -25,10 +25,15 @@ def test_na24_by_symbol_tuple_and_object():
     assert _line(a, 2754.0).intensity == pytest.approx(0.9986, abs=1e-3)
 
 
-def test_isomer_numbering():
-    """Na-24m (20 ms, 472 keV IT) is m = 1 in ENDF; 'Na24m' and 'Na24m1' are the same."""
-    assert emissions.gamma_lines("Na24m").equals(emissions.gamma_lines("Na24m1"))
+def test_isomer_numbering_nubase_to_endf():
+    """NUBASE names are translated to ENDF states: Na24m is ENDF m=1 (472 keV IT); NUBASE's Ag110m
+    is a 0.66 us level, its Ag110n is ENDF's 250 d Ag-110m1."""
+    assert emissions.gamma_lines("Na24m").equals(emissions.gamma_lines((11, 24, 1)))
     assert _line(emissions.gamma_lines((11, 24, 1)), 472.2).intensity > 0.4
+    ag = emissions.gamma_lines("Ag110n")
+    assert ag.equals(emissions.gamma_lines((47, 110, 1))) and _line(ag, 657.8).intensity > 0.9
+    with pytest.raises(LookupError):
+        emissions.lines("Ag110m")
 
 
 def test_positron_emitter():
@@ -54,3 +59,5 @@ def test_stable_and_bad_input():
         emissions.lines("Na24", "neutrino")
     with pytest.raises(ValueError):
         emissions.lines("24Na")
+    with pytest.raises(ValueError):
+        emissions.lines("Na24m1")          # ENDF-style name: give (11, 24, 1)

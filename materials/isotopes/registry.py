@@ -39,6 +39,7 @@ def load_isotope(symbol: str):
         ZAID=row.ZAID,
         symbol=row.symbol,
         mass= row.mass,
+        excitation_level=None if pd.isna(row.get("excitation")) else row.excitation,
         abundance=None if pd.isna(row.abundance) else row.abundance,
         decay=None if pd.isna(row.decay) else row.decay
     )
