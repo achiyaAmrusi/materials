@@ -28,8 +28,13 @@ def test_nubase_symbols_unique_and_x_isomers_kept(nubase):
 def test_nubase_units_and_abundances(nubase):
     assert nubase.loc["H4", "half_life"] == pytest.approx(1.39e-22)    # 'ys' is yoctoseconds
     assert nubase.loc["Bi209", "abundance"] == 100.0
-    assert math.isnan(nubase.loc["Al27", "decay"]) and nubase.loc["Al27", "half_life"] == math.inf
+    assert nubase.loc["Al27", "half_life"] == math.inf and "decay" not in nubase.columns
     assert "Cu76m" not in nubase.index             # NUBASE: non-existent state
+
+
+def test_registry_decay_constant_from_half_life():
+    assert registry.load_isotope("Na24").decay == pytest.approx(math.log(2) / (14.956 * 3600), rel=1e-3)
+    assert registry.load_isotope("Al27").decay is None
 
 
 def test_registry_carries_excitation():

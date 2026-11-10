@@ -1,3 +1,5 @@
+import math
+
 import pandas as pd
 from materials.isotopes.isotope import Isotope
 from .element import Element
@@ -6,21 +8,20 @@ import importlib.resources as pkg_resources
 _isotope_registry = {}
 _element_registry = {}
 nubase = None
-elements = None
 
 def _load_nubase():
-    """Load Nubase only once."""
+    """Load Nubase only once; adds the element symbol of each row (column 'element')."""
     global nubase
-    with pkg_resources.path("materials.library", "nubase2020.csv") as nubase:
-        nubase = pd.read_csv(nubase)
+    if nubase is None:
+        with pkg_resources.path("materials.library", "nubase2020.csv") as path:
+            nubase = pd.read_csv(path)
+        nubase["element"] = nubase.symbol.str.extract(r"^([A-Z][a-z]?)")[0]
     return nubase
 
-def _load_elements():
-    """Load Nubase only once."""
-    global elements
-    with pkg_resources.path("materials.library", "elements.csv") as elements:
-        elements = pd.read_csv(elements)
-    return elements
+
+def _decay_constant(half_life: float):
+    """ln2 / half-life [1/s]; None when stable or unknown."""
+    return math.log(2) / half_life if 0 < half_life < math.inf else None
 
 def load_isotope(symbol: str):
     """Return Isotope object by e.g. 'He4' or 'H3'."""
@@ -41,7 +42,7 @@ def load_isotope(symbol: str):
         mass= row.mass,
         excitation_level=None if pd.isna(row.get("excitation")) else row.excitation,
         abundance=None if pd.isna(row.abundance) else row.abundance,
-        decay=None if pd.isna(row.decay) else row.decay
+        decay=_decay_constant(row.half_life)
     )
     _isotope_registry[symbol] = iso
     return iso
@@ -52,14 +53,12 @@ def load_element(symbol: str):
     if symbol in _element_registry:
         return _element_registry[symbol]
 
-    elements_df = _load_elements()
-    element_row = elements_df[elements_df.element == symbol]
-
-    if element_row.empty:
-        raise AttributeError(f"No element {symbol}")
-
     nubase_df = _load_nubase()
-    isotope_rows = nubase_df[nubase_df.Z == element_row.Z.item()]
+    isotope_rows = nubase_df[nubase_df.element == symbol]
+
+    if isotope_rows.empty:
+        raise AttributeError(f"No element {symbol}")
+    z = int(isotope_rows.Z.iloc[0])
 
     mass = 0
     abundance_dict = {}
@@ -70,11 +69,11 @@ def load_element(symbol: str):
             abundance_dict[iso] = iso.abundance
 
     element = Element(
-        Z = element_row.Z.item(),
-        ZAID=element_row.Z.item() * 1000,
-        symbol=element_row.element.item(),
+        Z=z,
+        ZAID=z * 1000,
+        symbol=symbol,
         mass=mass,
         abundance=abundance_dict)
 
-    _element_registry[element_row.element.item()] = element
+    _element_registry[symbol] = element
     return element

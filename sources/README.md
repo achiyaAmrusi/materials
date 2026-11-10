@@ -6,7 +6,7 @@ they are also the documentation of the tables.
 
 | notebook | reads | writes (`materials/library/`) |
 |---|---|---|
-| `nubase.ipynb` | `raw/nubase_4.mas20.txt` | `nubase2020.csv`: one row per nuclide or excited state: Z, A, ZAID, symbol, mass, excitation, half-life, decay constant, abundance. `elements.csv`: element symbol, Z |
+| `nubase.ipynb` | `raw/nubase_4.mas20.txt` | `nubase2020.csv`: one row per nuclide or excited state: Z, A, ZAID, symbol, mass, excitation, half-life, abundance. Elements and decay constants are derived from it by the registry |
 | `endf_decay.ipynb` | the ENDF/B-VIII.1 decay sublibrary (`ENDF_DECAY_DIR`; not in this repo, about 3,800 files) | `decay_lines.csv.gz`: gamma, X-ray, annihilation, beta endpoint and alpha lines per decay. `endf_states.csv`: every ENDF state with its NUBASE name |
 
 Run `nubase.ipynb` first: `endf_decay.ipynb` matches the ENDF states to its table. The notebooks need

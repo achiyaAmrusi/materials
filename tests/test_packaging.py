@@ -7,6 +7,6 @@ import importlib.resources as pkg_resources
 
 
 def test_library_csv_files_are_importable_package_data():
-    for filename in ("elements.csv", "nubase2020.csv"):
+    for filename in ("nubase2020.csv", "decay_lines.csv.gz", "endf_states.csv"):
         with pkg_resources.path("materials.library", filename) as path:
             assert path.is_file(), f"missing packaged data file: {filename}"
