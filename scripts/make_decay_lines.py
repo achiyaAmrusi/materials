@@ -9,7 +9,8 @@ normalization):
     radiation      energy                               intensity
     gamma          photon energy                        photons per decay
     xray           photon energy                        photons per decay
-    annihilation   511 keV                              2 x total positron intensity
+    annihilation   511 keV                              photons per decay (ENDF lists them as
+                                                        X-rays at 511 keV; relabelled here)
     beta-          endpoint energy of the branch        branch intensity
     beta+          endpoint = transition energy - 2 m_e c^2   positrons per decay (EC excluded)
     alpha          alpha energy                         alphas per decay
@@ -37,16 +38,14 @@ def rows(decay: Decay):
         lines = spectrum.get("discrete") or []
         if key in KINDS:
             for line in lines:
-                yield KINDS[key], nominal(line["energy"]), norm * nominal(line["intensity"])
+                energy = nominal(line["energy"])
+                kind = "annihilation" if key == "xray" and abs(energy - HALF_ME) < 10.0 else KINDS[key]
+                yield kind, energy, norm * nominal(line["intensity"])
         elif key == "β+":
-            positrons = 0.0
             for line in lines:
                 p = norm * nominal(line.get("positron_intensity", 0.0))
                 if p > 0:
-                    positrons += p
                     yield "beta+", nominal(line["energy"]) - TWO_ME, p
-            if positrons > 0:
-                yield "annihilation", HALF_ME, 2.0 * positrons
 
 
 def main():

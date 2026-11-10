@@ -10,7 +10,7 @@
 Data: the ENDF/B-VIII.1 decay sublibrary, discrete spectra (MF8/MT457), bundled as
 library/decay_lines.csv.gz (made by scripts/make_decay_lines.py). Per decay:
     gamma, xray      photon energy, photons per decay
-    annihilation     511 keV, 2 x the positron intensity
+    annihilation     511 keV, photons per decay (ENDF's 511 keV X-ray entries, ~2 x positrons)
     beta-            endpoint energy of each branch, branch intensity
     beta+            positron endpoint (transition energy - 2 m_e c^2), positrons per decay
     alpha            alpha energy, alphas per decay
