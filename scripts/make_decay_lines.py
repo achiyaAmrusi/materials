@@ -2,7 +2,8 @@
 
     python scripts/make_decay_lines.py <decay directory> [--evaluation "ENDF/B-VIII.1"]
 
-Needs ramp_endf (only for this script; the materials package reads the table with pandas).
+Needs openmc (openmc.data.Evaluation and Decay; only for this script, the materials package reads
+the table with pandas).
 One row per line (MF8/MT457 discrete spectra, intensities per decay times the discrete
 normalization):
 
@@ -19,13 +20,14 @@ Nuclides are numbered as the ENDF files number them (m = LISO, the isomer number
 """
 import argparse
 import gzip
+import warnings
 from pathlib import Path
 
-from ramp_endf import Decay, Evaluation
+from openmc.data import Decay, Evaluation
 
 TWO_ME = 1.02199895e6       # eV, 2 m_e c^2
 HALF_ME = 0.510998950e6     # eV
-KINDS = {"γ": "gamma", "xray": "xray", "β-": "beta-", "α": "alpha"}
+KINDS = {"gamma": "gamma", "xray": "xray", "beta-": "beta-", "alpha": "alpha"}   # openmc's spectrum keys
 
 
 def nominal(x) -> float:
@@ -41,7 +43,7 @@ def rows(decay: Decay):
                 energy = nominal(line["energy"])
                 kind = "annihilation" if key == "xray" and abs(energy - HALF_ME) < 10.0 else KINDS[key]
                 yield kind, energy, norm * nominal(line["intensity"])
-        elif key == "β+":
+        elif key == "ec/beta+":
             for line in lines:
                 p = norm * nominal(line.get("positron_intensity", 0.0))
                 if p > 0:
@@ -55,6 +57,7 @@ def main():
     parser.add_argument("--out", type=Path,
                         default=Path(__file__).resolve().parents[1] / "materials/library/decay_lines.csv.gz")
     args = parser.parse_args()
+    warnings.filterwarnings("ignore", message="Using UFloat objects with std_dev==0")
 
     out, skipped = [], []
     for path in sorted(p for p in args.decay_dir.iterdir() if p.is_file()):
