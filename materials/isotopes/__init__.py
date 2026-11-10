@@ -1,6 +1,7 @@
 from materials.isotopes.isotope import Isotope
 from materials.isotopes.element import Element
 from materials.isotopes import registry
+from materials.isotopes import emissions
 import re
 
 def __getattr__(name: str):

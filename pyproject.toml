@@ -20,7 +20,7 @@ dev = ["pytest>=7.0"]
 include = ["materials*"]
 
 [tool.setuptools.package-data]
-"materials.library" = ["*.csv"]
+"materials.library" = ["*.csv", "*.csv.gz"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
